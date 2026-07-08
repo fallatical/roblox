@@ -253,6 +253,240 @@ function Urasi:CreateWindow(config)
 		tween(blur, {Size = 15}, OPEN_TWEEN)
 	end)
 
+	local leftPanel = Instance.new("Frame", root)
+	leftPanel.Size = UDim2.new(0, 220, 0, 520)
+	leftPanel.Position = UDim2.new(0.5, -720, 0.5, -260)
+	leftPanel.BackgroundColor3 = BG_PANEL
+	leftPanel.BackgroundTransparency = 0.1
+	leftPanel.BorderSizePixel = 0
+	addCorners(leftPanel, ACCENT)
+	applyGrid(leftPanel)
+	makeDraggable(leftPanel, leftPanel)
+
+	local settingsPanel = Instance.new("Frame", root)
+	settingsPanel.Size = UDim2.new(0, 220, 0, 520)
+	settingsPanel.Position = UDim2.new(0.5, 370, 0.5, -260)
+	settingsPanel.BackgroundColor3 = BG_PANEL
+	settingsPanel.BackgroundTransparency = 0.1
+	settingsPanel.BorderSizePixel = 0
+	addCorners(settingsPanel, ACCENT)
+	applyGrid(settingsPanel)
+	makeDraggable(settingsPanel, settingsPanel)
+
+	local settingsLabel = makeLabel(settingsPanel, "TOGGLE SETTINGS", 12, FONT_TITLE, TEXT_DIM)
+	settingsLabel.Position = UDim2.new(0, 10, 0, 8)
+	settingsLabel.Size = UDim2.new(1, -20, 0, 16)
+
+	local settingsContent = Instance.new("Frame", settingsPanel)
+	settingsContent.Size = UDim2.new(1, -10, 1, -40)
+	settingsContent.Position = UDim2.new(0, 5, 0, 35)
+	settingsContent.BackgroundTransparency = 1
+	settingsContent.ClipsDescendants = true
+
+	local function buildSettingsFrame(state, settingsData)
+		for _, child in ipairs(settingsContent:GetChildren()) do
+			if child:IsA("Frame") then child:Destroy() end
+		end
+		if state and #settingsData > 0 then
+			local container = Instance.new("Frame", settingsContent)
+			container.Size = UDim2.new(1, 0, 0, 0)
+			container.Position = UDim2.new(0, 0, 0, 0)
+			container.BackgroundTransparency = 1
+			container.AutomaticSize = Enum.AutomaticSize.Y
+
+			local yPos = 0
+			for _, data in ipairs(settingsData) do
+				if data.Type == "Slider" then
+					local holder = Instance.new("Frame", container)
+					holder.Size = UDim2.new(1, 0, 0, 35)
+					holder.Position = UDim2.new(0, 0, 0, yPos)
+					holder.BackgroundTransparency = 1
+					local label = makeLabel(holder, data.Text .. ": " .. data.Default, 10, FONT_BODY, ACCENT)
+					label.Size = UDim2.new(1, 0, 0, 15)
+					local barBg = Instance.new("Frame", holder)
+					barBg.Size = UDim2.new(1, 0, 0, 2)
+					barBg.Position = UDim2.new(0, 0, 0, 23)
+					barBg.BackgroundColor3 = Color3.fromRGB(40, 20, 30)
+					local barFill = Instance.new("Frame", barBg)
+					barFill.Size = UDim2.new((data.Default-data.Min)/(data.Max-data.Min), 0, 1, 0)
+					barFill.BackgroundColor3 = ACCENT
+					local marker = Instance.new("Frame", barFill)
+					marker.Size = UDim2.new(0, 6, 0, 14)
+					marker.Position = UDim2.new(1, -3, 0.5, -7)
+					marker.BackgroundColor3 = TEXT_MAIN
+					local btn = Instance.new("TextButton", holder)
+					btn.Size = UDim2.new(1, 0, 0, 20)
+					btn.Position = UDim2.new(0, 0, 0, 12)
+					btn.BackgroundTransparency = 1
+					btn.Text = ""
+					local dragging, currentVal = false, data.Default
+					btn.InputBegan:Connect(function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+					end)
+					UserInputService.InputEnded:Connect(function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+					end)
+					UserInputService.InputChanged:Connect(function(input)
+						if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+							local pct = math.clamp((input.Position.X - barBg.AbsolutePosition.X) / barBg.AbsoluteSize.X, 0, 1)
+							tween(barFill, {Size = UDim2.new(pct, 0, 1, 0)}, TweenInfo.new(0.1))
+							currentVal = math.floor((data.Min + (data.Max - data.Min) * pct) * 10) / 10
+							label.Text = data.Text .. ": " .. currentVal
+							if data.Callback then data.Callback(currentVal) end
+						end
+					end)
+					yPos += 40
+				
+				elseif data.Type == "Keybind" then
+					local holder = Instance.new("Frame", container)
+					holder.Size = UDim2.new(1, 0, 0, 30)
+					holder.Position = UDim2.new(0, 0, 0, yPos)
+					holder.BackgroundTransparency = 1
+					local label = makeLabel(holder, data.Text .. ": " .. data.Default.Name, 10, FONT_BODY, ACCENT)
+					label.Size = UDim2.new(1, 0, 0, 15)
+					local btn = Instance.new("TextButton", holder)
+					btn.Size = UDim2.new(1, 0, 0, 16)
+					btn.Position = UDim2.new(0, 0, 0, 18)
+					btn.BackgroundTransparency = 1
+					btn.Text = "Keybind: " .. data.Default.Name
+					btn.TextColor3 = TEXT_MAIN
+					btn.Font = FONT_BODY
+					btn.TextSize = 11
+					local currentKey = data.Default
+					local isListening = false
+					btn.MouseButton1Click:Connect(function()
+						isListening = true
+						btn.Text = "Press any key..."
+						local connection
+						connection = UserInputService.InputBegan:Connect(function(input, gP)
+							if gP then return end
+							if input.KeyCode then
+								currentKey = input.KeyCode
+								btn.Text = "Keybind: " .. currentKey.Name
+								isListening = false
+								label.Text = data.Text .. ": " .. currentKey.Name
+								if data.Callback then data.Callback(currentKey) end
+								connection:Disconnect()
+							end
+						end)
+					end)
+					yPos += 35
+
+				elseif data.Type == "Dropdown" then
+					local holder = Instance.new("Frame", container)
+					holder.Size = UDim2.new(1, 0, 0, 30)
+					holder.Position = UDim2.new(0, 0, 0, yPos)
+					holder.BackgroundTransparency = 1
+					local label = makeLabel(holder, data.Text .. ": " .. data.Default, 10, FONT_BODY, ACCENT)
+					label.Size = UDim2.new(1, 0, 0, 15)
+					local btn = Instance.new("TextButton", holder)
+					btn.Size = UDim2.new(1, 0, 0, 16)
+					btn.Position = UDim2.new(0, 0, 0, 18)
+					btn.BackgroundTransparency = 1
+					btn.Text = data.Default or "Select"
+					btn.TextColor3 = TEXT_MAIN
+					btn.Font = FONT_BODY
+					btn.TextSize = 11
+					local currentVal = data.Default
+					local isOpen = false
+					btn.MouseButton1Click:Connect(function()
+						isOpen = not isOpen
+						if isOpen then
+							local dropFrame = Instance.new("Frame", container)
+							dropFrame.Size = UDim2.new(1, 0, 0, 0)
+							dropFrame.Position = UDim2.new(0, 0, 0, yPos + 36)
+							dropFrame.BackgroundColor3 = BG_PANEL
+							dropFrame.BackgroundTransparency = 0.2
+							dropFrame.ClipsDescendants = true
+							local l = Instance.new("UIListLayout", dropFrame)
+							l.Padding = UDim.new(0, 2)
+							for _, val in ipairs(data.List or {}) do
+								local opt = Instance.new("TextButton", dropFrame)
+								opt.Size = UDim2.new(1, 0, 0, 16)
+								opt.BackgroundTransparency = 1
+								opt.Text = tostring(val)
+								opt.TextColor3 = TEXT_DIM
+								opt.Font = FONT_BODY
+								opt.TextSize = 11
+								opt.MouseEnter:Connect(function() opt.TextColor3 = TEXT_MAIN end)
+								opt.MouseLeave:Connect(function() opt.TextColor3 = TEXT_DIM end)
+								opt.MouseButton1Click:Connect(function()
+									currentVal = val
+									btn.Text = tostring(val)
+									label.Text = data.Text .. ": " .. tostring(val)
+									dropFrame:Destroy()
+									isOpen = false
+									if data.Callback then data.Callback(val) end
+								end)
+							end
+							local h = math.min(#data.List * 18 + (#data.List - 1) * 2, 120)
+							tween(dropFrame, {Size = UDim2.new(1, 0, 0, h)}, TweenInfo.new(0.2))
+						else
+							for _, c in ipairs(container:GetChildren()) do if c:IsA("Frame") and c.Position.Y.Offset == yPos + 36 then c:Destroy() end end
+						end
+					end)
+					yPos += 40
+
+				elseif data.Type == "ColorPicker" then
+					local holder = Instance.new("Frame", container)
+					holder.Size = UDim2.new(1, 0, 0, 80)
+					holder.Position = UDim2.new(0, 0, 0, yPos)
+					holder.BackgroundTransparency = 1
+					local rgbVals = {data.Default.R * 255, data.Default.G * 255, data.Default.B * 255}
+					local function updateC()
+						local newC = Color3.new(rgbVals[1]/255, rgbVals[2]/255, rgbVals[3]/255)
+						if data.Callback then data.Callback(newC) end
+					end
+					local label = makeLabel(holder, data.Text, 10, FONT_BODY, ACCENT)
+					label.Size = UDim2.new(1, 0, 0, 15)
+					local colorBox = Instance.new("Frame", holder)
+					colorBox.Size = UDim2.new(0, 20, 0, 20)
+					colorBox.Position = UDim2.new(0, 0, 0, 18)
+					colorBox.BackgroundColor3 = data.Default
+					colorBox.BorderSizePixel = 0
+					local corner = Instance.new("UICorner")
+					corner.CornerRadius = UDim.new(0, 3)
+					corner.Parent = colorBox
+					for i, t in ipairs({"R", "G", "B"}) do
+						local sHolder = Instance.new("Frame", holder)
+						sHolder.Size = UDim2.new(0, 60, 0, 18)
+						sHolder.Position = UDim2.new(0, 30 + (i-1)*65, 0, 20)
+						sHolder.BackgroundTransparency = 1
+						local sL = makeLabel(sHolder, t, 9, FONT_BODY, TEXT_DIM)
+						sL.Size = UDim2.new(1, -30, 1, 0)
+						local sBarBg = Instance.new("Frame", sHolder)
+						sBarBg.Size = UDim2.new(0, 30, 0, 2)
+						sBarBg.Position = UDim2.new(1, -30, 0.5, -1)
+						sBarBg.BackgroundColor3 = Color3.fromRGB(60,60,60)
+						local sBarFill = Instance.new("Frame", sBarBg)
+						sBarFill.Size = UDim2.new(rgbVals[i]/255, 0, 1, 0)
+						sBarFill.BackgroundColor3 = i == 1 and Color3.new(1,0,0) or i == 2 and Color3.new(0,1,0) or Color3.new(0,0,1)
+						local sBtn = Instance.new("TextButton", sHolder)
+						sBtn.Size = UDim2.new(1, 0, 1, 0)
+						sBtn.BackgroundTransparency = 1
+						local dragging = false
+						sBtn.InputBegan:Connect(function(input)
+							if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = true end
+						end)
+						UserInputService.InputEnded:Connect(function(input)
+							if input.UserInputType == Enum.UserInputType.MouseButton1 then dragging = false end
+						end)
+						UserInputService.InputChanged:Connect(function(input)
+							if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+								local pct = math.clamp((input.Position.X - sBarBg.AbsolutePosition.X) / sBarBg.AbsoluteSize.X, 0, 1)
+								tween(sBarFill, {Size = UDim2.new(pct, 0, 1, 0)}, TweenInfo.new(0.1))
+								rgbVals[i] = math.floor(pct * 255)
+								colorBox.BackgroundColor3 = Color3.new(rgbVals[1]/255, rgbVals[2]/255, rgbVals[3]/255)
+								updateC()
+							end
+						end)
+					end
+					yPos += 85
+				end
+			end
+		end
+	end
+
 	local tabButtons = {}
 	local tabFrames = {}
 	local currentTab = nil
@@ -329,14 +563,13 @@ function Urasi:CreateWindow(config)
 			currentTab = name
 		end
 
-		return {
+		local tabAPI = {
 			_Frame = frame,
 			_TabName = name,
+			
 			CreateToggle = function(config)
 				local toggleText = tostring(config.Text)
-				if toggleText == "nil" or toggleText == "" then
-					toggleText = "Toggle"
-				end
+				if toggleText == "nil" or toggleText == "" then toggleText = "Toggle" end
 				
 				local holder = Instance.new("Frame", frame)
 				holder.Size = UDim2.new(0, 210, 0, 32)
@@ -381,6 +614,11 @@ function Urasi:CreateWindow(config)
 							tween(boxBg, {BackgroundTransparency = 1}, TweenInfo.new(0.2))
 							tween(accentBar, {BackgroundTransparency = 1, Size = UDim2.new(0, 0, 0, 2)}, TweenInfo.new(0.2))
 						end
+						
+						if config.Settings then
+							buildSettingsFrame(state, config.Settings)
+						end
+						
 						if config.Callback then config.Callback(state) end
 					end,
 					GetState = function() return state end
@@ -391,6 +629,7 @@ function Urasi:CreateWindow(config)
 				end)
 				return toggleObj
 			end,
+			
 			CreateSlider = function(config)
 				local holder = Instance.new("Frame", frame)
 				holder.Size = UDim2.new(0, 210, 0, 40)
@@ -462,21 +701,218 @@ function Urasi:CreateWindow(config)
 					end
 				end)
 				return sliderObj
+			end,
+
+			CreateDropdown = function(config)
+				local holder = Instance.new("Frame", frame)
+				holder.Size = UDim2.new(0, 210, 0, 30)
+				holder.Position = config.Pos or UDim2.new(0, 10, 0, 10)
+				holder.BackgroundTransparency = 1
+
+				local label = makeLabel(holder, config.Text .. ": " .. config.Default, 11, FONT_BODY, ACCENT)
+				label.Size = UDim2.new(1, 0, 0, 15)
+				label.TextXAlignment = Enum.TextXAlignment.Left
+
+				local btn = Instance.new("TextButton", holder)
+				btn.Size = UDim2.new(1, 0, 0, 20)
+				btn.Position = UDim2.new(0, 0, 0, 18)
+				btn.BackgroundColor3 = BG_PANEL
+				btn.BackgroundTransparency = 0.2
+				btn.BorderSizePixel = 0
+				btn.Text = config.Default or "Select"
+				btn.TextColor3 = TEXT_MAIN
+				btn.Font = FONT_BODY
+				btn.TextSize = 12
+
+				local dropdown = Instance.new("Frame", holder)
+				dropdown.Size = UDim2.new(1, 0, 0, 0)
+				dropdown.Position = UDim2.new(0, 0, 0, 38)
+				dropdown.BackgroundColor3 = BG_PANEL
+				dropdown.BackgroundTransparency = 0.2
+				dropdown.BorderSizePixel = 0
+				dropdown.ClipsDescendants = true
+
+				local listLayout = Instance.new("UIListLayout", dropdown)
+				listLayout.Padding = UDim.new(0, 2)
+
+				local isOpen = false
+				local currentValue = config.Default
+
+				btn.MouseButton1Click:Connect(function()
+					isOpen = not isOpen
+					if isOpen then
+						for _, val in ipairs(config.List or {}) do
+							local opt = Instance.new("TextButton", dropdown)
+							opt.Size = UDim2.new(1, 0, 0, 18)
+							opt.BackgroundTransparency = 1
+							opt.Text = tostring(val)
+							opt.TextColor3 = TEXT_DIM
+							opt.Font = FONT_BODY
+							opt.TextSize = 12
+							opt.MouseEnter:Connect(function() opt.TextColor3 = TEXT_MAIN end)
+							opt.MouseLeave:Connect(function() opt.TextColor3 = TEXT_DIM end)
+							opt.MouseButton1Click:Connect(function()
+								currentValue = val
+								btn.Text = tostring(val)
+								label.Text = config.Text .. ": " .. tostring(val)
+								isOpen = false
+								dropdown.Size = UDim2.new(1, 0, 0, 0)
+								if config.Callback then config.Callback(val) end
+								for _, c in ipairs(dropdown:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+							end)
+						end
+						local contentHeight = #config.List * 18 + (#config.List - 1) * 2
+						tween(dropdown, {Size = UDim2.new(1, 0, 0, math.min(contentHeight, 120))}, TweenInfo.new(0.2))
+					else
+						dropdown.Size = UDim2.new(1, 0, 0, 0)
+						for _, c in ipairs(dropdown:GetChildren()) do if c:IsA("TextButton") then c:Destroy() end end
+					end
+				end)
+
+				return {
+					GetValue = function() return currentValue end,
+					SetValue = function(v)
+						currentValue = v
+						btn.Text = tostring(v)
+						label.Text = config.Text .. ": " .. tostring(v)
+						if config.Callback then config.Callback(v) end
+					end
+				}
+			end,
+
+			CreateKeybind = function(config)
+				local holder = Instance.new("Frame", frame)
+				holder.Size = UDim2.new(0, 210, 0, 30)
+				holder.Position = config.Pos or UDim2.new(0, 10, 0, 10)
+				holder.BackgroundTransparency = 1
+
+				local label = makeLabel(holder, config.Text .. ": " .. config.Default.Name, 11, FONT_BODY, ACCENT)
+				label.Size = UDim2.new(1, 0, 0, 15)
+				label.TextXAlignment = Enum.TextXAlignment.Left
+
+				local btn = Instance.new("TextButton", holder)
+				btn.Size = UDim2.new(1, 0, 0, 20)
+				btn.Position = UDim2.new(0, 0, 0, 18)
+				btn.BackgroundColor3 = BG_PANEL
+				btn.BackgroundTransparency = 0.2
+				btn.BorderSizePixel = 0
+				btn.Text = "Keybind: " .. config.Default.Name
+				btn.TextColor3 = TEXT_MAIN
+				btn.Font = FONT_BODY
+				btn.TextSize = 12
+
+				local isListening = false
+				local currentKey = config.Default
+
+				btn.MouseButton1Click:Connect(function()
+					isListening = not isListening
+					if isListening then
+						btn.Text = "Press any key..."
+						local connection
+						connection = UserInputService.InputBegan:Connect(function(input, gP)
+							if gP then return end
+							if input.KeyCode then
+								currentKey = input.KeyCode
+								btn.Text = "Keybind: " .. currentKey.Name
+								label.Text = config.Text .. ": " .. currentKey.Name
+								isListening = false
+								if config.Callback then config.Callback(currentKey) end
+								connection:Disconnect()
+							end
+						end)
+					end
+				end)
+
+				return {
+					GetValue = function() return currentKey end,
+					SetValue = function(v)
+						currentKey = v
+						btn.Text = "Keybind: " .. v.Name
+						if config.Callback then config.Callback(v) end
+					end
+				}
+			end,
+
+			CreateColorPicker = function(config)
+				local holder = Instance.new("Frame", frame)
+				holder.Size = UDim2.new(0, 210, 0, 80)
+				holder.Position = config.Pos or UDim2.new(0, 10, 0, 10)
+				holder.BackgroundTransparency = 1
+
+				local label = makeLabel(holder, config.Text, 11, FONT_BODY, ACCENT)
+				label.Size = UDim2.new(1, 0, 0, 15)
+				label.TextXAlignment = Enum.TextXAlignment.Left
+
+				local colorBox = Instance.new("Frame", holder)
+				colorBox.Size = UDim2.new(0, 30, 0, 30)
+				colorBox.Position = UDim2.new(0, 0, 0, 20)
+				colorBox.BackgroundColor3 = config.Default
+				colorBox.BorderSizePixel = 1
+				colorBox.BorderColor3 = Color3.new(1,1,1)
+				local boxCorner = Instance.new("UICorner")
+				boxCorner.CornerRadius = UDim.new(0, 4)
+				boxCorner.Parent = colorBox
+
+				local rgbVals = {config.Default.R * 255, config.Default.G * 255, config.Default.B * 255}
+				local function updateColor()
+					local newColor = Color3.new(rgbVals[1]/255, rgbVals[2]/255, rgbVals[3]/255)
+					colorBox.BackgroundColor3 = newColor
+					if config.Callback then config.Callback(newColor) end
+				end
+
+				local labels = {"R", "G", "B"}
+				for i, t in ipairs(labels) do
+					local sHolder = Instance.new("Frame", holder)
+					sHolder.Size = UDim2.new(0, 50, 0, 20)
+					sHolder.Position = UDim2.new(0, 40 + (i-1)*55, 0, 22)
+					sHolder.BackgroundTransparency = 1
+
+					local sLabel = makeLabel(sHolder, t, 10, FONT_BODY, TEXT_DIM)
+					sLabel.Size = UDim2.new(1, -25, 1, 0)
+					sLabel.Position = UDim2.new(0, 0, 0, 0)
+
+					local sBarBg = Instance.new("Frame", sHolder)
+					sBarBg.Size = UDim2.new(0, 25, 0, 2)
+					sBarBg.Position = UDim2.new(1, -25, 0.5, -1)
+					sBarBg.BackgroundColor3 = Color3.fromRGB(60,60,60)
+
+					local sBarFill = Instance.new("Frame", sBarBg)
+					sBarFill.Size = UDim2.new(rgbVals[i]/255, 0, 1, 0)
+					sBarFill.BackgroundColor3 = i == 1 and Color3.new(1,0,0) or i == 2 and Color3.new(0,1,0) or Color3.new(0,0,1)
+
+					local sBtn = Instance.new("TextButton", sHolder)
+					sBtn.Size = UDim2.new(1, 0, 1, 0)
+					sBtn.BackgroundTransparency = 1
+					sBtn.Text = ""
+
+					local dragging = false
+					sBtn.InputBegan:Connect(function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 then
+							dragging = true
+						end
+					end)
+					UserInputService.InputEnded:Connect(function(input)
+						if input.UserInputType == Enum.UserInputType.MouseButton1 then
+							dragging = false
+						end
+					end)
+					UserInputService.InputChanged:Connect(function(input)
+						if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+							local pct = math.clamp((input.Position.X - sBarBg.AbsolutePosition.X) / sBarBg.AbsoluteSize.X, 0, 1)
+							tween(sBarFill, {Size = UDim2.new(pct, 0, 1, 0)}, TweenInfo.new(0.1))
+							rgbVals[i] = math.floor(pct * 255)
+							updateColor()
+						end
+					end)
+				end
+				return {GetValue = function() return Color3.new(rgbVals[1]/255, rgbVals[2]/255, rgbVals[3]/255) end}
 			end
 		}
+		return tabAPI
 	end
 
 	function self:CreatePlayerList()
-		local previewPanel = Instance.new("Frame", root)
-		previewPanel.Size = UDim2.new(0, 220, 0, 520)
-		previewPanel.Position = UDim2.new(0.5, 360, 0.5, -260)
-		previewPanel.BackgroundColor3 = BG_PANEL
-		previewPanel.BackgroundTransparency = 0.1
-		previewPanel.BorderSizePixel = 0
-		addCorners(previewPanel, ACCENT)
-		applyGrid(previewPanel)
-		makeDraggable(previewPanel, previewPanel)
-
+		local previewPanel = leftPanel
 		local prevTitle = makeLabel(previewPanel, "PLAYER LIST", 12, FONT_TITLE, ACCENT)
 		prevTitle.Position = UDim2.new(0, 10, 0, 8)
 		prevTitle.Size = UDim2.new(1, -20, 0, 16)
