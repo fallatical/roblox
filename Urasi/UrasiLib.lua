@@ -1,4 +1,5 @@
 -- Urasi
+
 local Urasi = {}
 
 local TweenService = game:GetService("TweenService")
@@ -6,6 +7,7 @@ local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
 local Players = game:GetService("Players")
+local Stats = game:GetService("Stats")
 
 local function tween(obj, props, info)
 	info = info or TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
@@ -51,7 +53,7 @@ local function makeLabel(parent, text, size, font, color, xAlign)
 	local l = Instance.new("TextLabel")
 	l.BackgroundTransparency = 1
 	l.BorderSizePixel = 0
-	l.Text = text
+	l.Text = text or "Label"
 	l.Font = font
 	l.TextSize = size
 	l.TextColor3 = color
@@ -150,7 +152,7 @@ function Urasi:CreateWindow(config)
 	statsLabel.Font = FONT_CODE
 	statsLabel.TextSize = 11
 	statsLabel.TextColor3 = ACCENT
-	statsLabel.Text = "Urasi Lib v1.0 | Ready"
+	statsLabel.Text = "Urasi Lib v1.0 | Initializing..."
 
 	local mainPanel = Instance.new("Frame", root)
 	mainPanel.Size = UDim2.new(0, 950, 0, 520)
@@ -275,6 +277,7 @@ function Urasi:CreateWindow(config)
 		accentBar.Size = UDim2.new(0, 0, 0, 18)
 		accentBar.Position = UDim2.new(0, -6, 0.5, -9)
 		accentBar.BackgroundColor3 = ACCENT
+		accentBar.BackgroundTransparency = 1 
 		accentBar.BorderSizePixel = 0
 		
 		btn.MouseButton1Click:Connect(function()
@@ -285,7 +288,10 @@ function Urasi:CreateWindow(config)
 				oldBtn.Text = oldBtn.Text:gsub("» ", "")
 				tween(oldBtn, {TextColor3 = TEXT_DIM}, TweenInfo.new(0.2))
 				local oldBar = oldBtn:FindFirstChild("AccentBar")
-				if oldBar then tween(oldBar, {Size = UDim2.new(0, 0, 0, 18)}, TweenInfo.new(0.2)) end
+				if oldBar then 
+					tween(oldBar, {Size = UDim2.new(0, 0, 0, 18)}, TweenInfo.new(0.2))
+					tween(oldBar, {BackgroundTransparency = 1}, TweenInfo.new(0.2))
+				end
 				tween(tabFrames[currentTab], {Position = UDim2.new(0, 15, 0, 10)}, TweenInfo.new(0.2))
 			end
 			
@@ -294,6 +300,7 @@ function Urasi:CreateWindow(config)
 			btn.Text = "» " .. name
 			tween(btn, {TextColor3 = TEXT_MAIN}, TweenInfo.new(0.2))
 			tween(accentBar, {Size = UDim2.new(0, 6, 0, 18)}, TweenInfo.new(0.2))
+			tween(accentBar, {BackgroundTransparency = 0}, TweenInfo.new(0.2))
 			
 			frame.Visible = true
 			frame.Position = UDim2.new(0, 30, 0, 10)
@@ -313,7 +320,10 @@ function Urasi:CreateWindow(config)
 			btn.Text = "» " .. name
 			btn.TextColor3 = TEXT_MAIN
 			local bar = btn:FindFirstChild("AccentBar")
-			if bar then bar.Size = UDim2.new(0, 6, 0, 18) end
+			if bar then 
+				bar.Size = UDim2.new(0, 6, 0, 18)
+				bar.BackgroundTransparency = 0
+			end
 			frame.Visible = true
 			frame.Position = UDim2.new(0, 10, 0, 10)
 			currentTab = name
@@ -323,6 +333,11 @@ function Urasi:CreateWindow(config)
 			_Frame = frame,
 			_TabName = name,
 			CreateToggle = function(config)
+				local toggleText = tostring(config.Text)
+				if toggleText == "nil" or toggleText == "" then
+					toggleText = "Toggle"
+				end
+				
 				local holder = Instance.new("Frame", frame)
 				holder.Size = UDim2.new(0, 210, 0, 32)
 				holder.Position = config.Pos or UDim2.new(0, 10, 0, 10)
@@ -335,7 +350,7 @@ function Urasi:CreateWindow(config)
 				boxBg.BorderSizePixel = 0
 				addCorners(boxBg, Color3.fromRGB(40,40,45))
 				
-				local label = makeLabel(holder, config.Text .. " [OFF]", 12, FONT_BODY, TEXT_MAIN)
+				local label = makeLabel(holder, toggleText .. " [OFF]", 12, FONT_BODY, TEXT_MAIN)
 				label.Size = UDim2.new(1, -10, 1, -10)
 				label.Position = UDim2.new(0, 10, 0, 0)
 				label.TextXAlignment = Enum.TextXAlignment.Left
@@ -356,7 +371,7 @@ function Urasi:CreateWindow(config)
 					State = false,
 					SetState = function(newState)
 						state = newState
-						label.Text = config.Text .. (state and " [ON]" or " [OFF]")
+						label.Text = toggleText .. (state and " [ON]" or " [OFF]")
 						if state then
 							tween(label, {TextColor3 = ACCENT}, TweenInfo.new(0.2))
 							tween(boxBg, {BackgroundTransparency = 0.9}, TweenInfo.new(0.2))
@@ -576,6 +591,35 @@ function Urasi:CreateWindow(config)
 
 		return listObj
 	end
+
+	local startTime = tick()
+	local frames = 0
+	local worldName = game.Name
+	task.spawn(function()
+		while task.wait(0.1) do
+			frames += 1
+			if frames % 10 == 0 then
+				local fps = math.floor(workspace:GetRealPhysicsFPS())
+				local runTime = tick() - startTime
+				local h = math.floor(runTime / 3600)
+				local m = math.floor((runTime % 3600) / 60)
+				local s = math.floor(runTime % 60)
+
+				local pos = Vector3.zero
+				if player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+					pos = player.Character.HumanoidRootPart.Position
+				end
+				statsLabel.Text = string.format(
+					"FPS: %03d | RAM: %.0fMB | STAY: %02d:%02d:%02d | POS: %.0f, %.0f, %.0f | WORLD: %s",
+					fps,
+					Stats:GetTotalMemoryUsageMb(),
+					h, m, s,
+					pos.X, pos.Y, pos.Z,
+					worldName
+				)
+			end
+		end
+	end)
 
 	return self
 end
