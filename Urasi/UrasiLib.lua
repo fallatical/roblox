@@ -5,6 +5,7 @@ local TweenService = game:GetService("TweenService")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local Lighting = game:GetService("Lighting")
+local Players = game:GetService("Players")
 
 local function tween(obj, props, info)
 	info = info or TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
@@ -94,7 +95,6 @@ end
 
 function Urasi:CreateWindow(config)
 	local self = {}
-	local Players = game:GetService("Players")
 	local player = Players.LocalPlayer
 	local playerGui = player:WaitForChild("PlayerGui")
 
@@ -272,12 +272,10 @@ function Urasi:CreateWindow(config)
 		frame.Visible = false
 
 		local accentBar = Instance.new("Frame", btn)
-		accentBar.Size = UDim2.new(0, 0, 0, 2)
-		accentBar.Position = UDim2.new(0, -10, 1, -2)
+		accentBar.Size = UDim2.new(0, 0, 0, 18)
+		accentBar.Position = UDim2.new(0, -6, 0.5, -9)
 		accentBar.BackgroundColor3 = ACCENT
 		accentBar.BorderSizePixel = 0
-
-		local label = btn:FindFirstChild("TextLabel")
 		
 		btn.MouseButton1Click:Connect(function()
 			if currentTab == name then return end
@@ -287,7 +285,7 @@ function Urasi:CreateWindow(config)
 				oldBtn.Text = oldBtn.Text:gsub("» ", "")
 				tween(oldBtn, {TextColor3 = TEXT_DIM}, TweenInfo.new(0.2))
 				local oldBar = oldBtn:FindFirstChild("AccentBar")
-				if oldBar then tween(oldBar, {Size = UDim2.new(0, 0, 0, 2)}, TweenInfo.new(0.2)) end
+				if oldBar then tween(oldBar, {Size = UDim2.new(0, 0, 0, 18)}, TweenInfo.new(0.2)) end
 				tween(tabFrames[currentTab], {Position = UDim2.new(0, 15, 0, 10)}, TweenInfo.new(0.2))
 			end
 			
@@ -295,7 +293,7 @@ function Urasi:CreateWindow(config)
 			
 			btn.Text = "» " .. name
 			tween(btn, {TextColor3 = TEXT_MAIN}, TweenInfo.new(0.2))
-			tween(accentBar, {Size = UDim2.new(0, 20, 0, 2)}, TweenInfo.new(0.2))
+			tween(accentBar, {Size = UDim2.new(0, 6, 0, 18)}, TweenInfo.new(0.2))
 			
 			frame.Visible = true
 			frame.Position = UDim2.new(0, 30, 0, 10)
@@ -308,11 +306,24 @@ function Urasi:CreateWindow(config)
 	end
 
 	function self:CreateTab(name)
+		local frame = createTab(name)
+		
+		if currentTab == nil then
+			local btn = tabButtons[name]
+			btn.Text = "» " .. name
+			btn.TextColor3 = TEXT_MAIN
+			local bar = btn:FindFirstChild("AccentBar")
+			if bar then bar.Size = UDim2.new(0, 6, 0, 18) end
+			frame.Visible = true
+			frame.Position = UDim2.new(0, 10, 0, 10)
+			currentTab = name
+		end
+
 		return {
-			_Frame = createTab(name),
+			_Frame = frame,
 			_TabName = name,
 			CreateToggle = function(config)
-				local holder = Instance.new("Frame", self._Frame)
+				local holder = Instance.new("Frame", frame)
 				holder.Size = UDim2.new(0, 210, 0, 32)
 				holder.Position = config.Pos or UDim2.new(0, 10, 0, 10)
 				holder.BackgroundTransparency = 1
@@ -349,7 +360,7 @@ function Urasi:CreateWindow(config)
 						if state then
 							tween(label, {TextColor3 = ACCENT}, TweenInfo.new(0.2))
 							tween(boxBg, {BackgroundTransparency = 0.9}, TweenInfo.new(0.2))
-							tween(accentBar, {BackgroundTransparency = 0, Size = UDim2.new(1, -10, 0, 2)}, TweenInfo.new(0.2))
+							tween(accentBar, {BackgroundTransparency = 0, Size = UDim2.new(1, -10, 0, 2)}, TweenInfo.new(0.2)) 
 						else
 							tween(label, {TextColor3 = TEXT_MAIN}, TweenInfo.new(0.2))
 							tween(boxBg, {BackgroundTransparency = 1}, TweenInfo.new(0.2))
@@ -366,7 +377,7 @@ function Urasi:CreateWindow(config)
 				return toggleObj
 			end,
 			CreateSlider = function(config)
-				local holder = Instance.new("Frame", self._Frame)
+				local holder = Instance.new("Frame", frame)
 				holder.Size = UDim2.new(0, 210, 0, 40)
 				holder.Position = config.Pos or UDim2.new(0, 10, 0, 10)
 				holder.BackgroundTransparency = 1
@@ -438,6 +449,132 @@ function Urasi:CreateWindow(config)
 				return sliderObj
 			end
 		}
+	end
+
+	function self:CreatePlayerList()
+		local previewPanel = Instance.new("Frame", root)
+		previewPanel.Size = UDim2.new(0, 220, 0, 520)
+		previewPanel.Position = UDim2.new(0.5, 360, 0.5, -260)
+		previewPanel.BackgroundColor3 = BG_PANEL
+		previewPanel.BackgroundTransparency = 0.1
+		previewPanel.BorderSizePixel = 0
+		addCorners(previewPanel, ACCENT)
+		applyGrid(previewPanel)
+		makeDraggable(previewPanel, previewPanel)
+
+		local prevTitle = makeLabel(previewPanel, "PLAYER LIST", 12, FONT_TITLE, ACCENT)
+		prevTitle.Position = UDim2.new(0, 10, 0, 8)
+		prevTitle.Size = UDim2.new(1, -20, 0, 16)
+
+		local prevSub = makeLabel(previewPanel, "ONLINE: 0", 9, FONT_CODE, TEXT_DIM)
+		prevSub.Position = UDim2.new(0, 10, 0, 22)
+		prevSub.Size = UDim2.new(1, -20, 0, 14)
+
+		local listScroller = Instance.new("ScrollingFrame")
+		listScroller.Size = UDim2.new(1, -10, 1, -45)
+		listScroller.Position = UDim2.new(0, 5, 0, 35)
+		listScroller.BackgroundTransparency = 1
+		listScroller.BorderSizePixel = 0
+		listScroller.ScrollBarThickness = 2
+		listScroller.ScrollBarImageColor3 = ACCENT
+		listScroller.Parent = previewPanel
+
+		local listLayout = Instance.new("UIListLayout")
+		listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+		listLayout.Padding = UDim.new(0, 1)
+		listLayout.Parent = listScroller
+		
+		listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+			listScroller.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y)
+		end)
+
+		local listObj = {}
+		local function GetPlayerTeam(p)
+			local attrTeam = p:GetAttribute("Team")
+			if attrTeam and type(attrTeam) == "string" and attrTeam ~= "" then return attrTeam end
+			return p.Team and p.Team.Name or "No Team"
+		end
+
+		function listObj:Update()
+			for _, child in ipairs(listScroller:GetChildren()) do
+				if child:IsA("Frame") then child:Destroy() end
+			end
+
+			local players = Players:GetPlayers()
+			local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+
+			local teams = {}
+			for _, p in ipairs(players) do
+				local teamName = GetPlayerTeam(p)
+				if not teams[teamName] then teams[teamName] = {} end
+				table.insert(teams[teamName], p)
+			end
+
+			local sortedTeamNames = {}
+			for teamName, _ in pairs(teams) do table.insert(sortedTeamNames, teamName) end
+			table.sort(sortedTeamNames)
+
+			local order = 0
+			for _, teamName in ipairs(sortedTeamNames) do
+				local teamPlayers = teams[teamName]
+				
+				local header = Instance.new("Frame")
+				header.Size = UDim2.new(1, -5, 0, 16)
+				header.BackgroundTransparency = 1
+				header.LayoutOrder = order
+				order += 1
+				header.Parent = listScroller
+
+				local headerTitle = makeLabel(header, string.upper(teamName), 10, FONT_TITLE, ACCENT)
+				headerTitle.Size = UDim2.new(1, 0, 1, 0)
+				headerTitle.TextXAlignment = Enum.TextXAlignment.Left
+
+				table.sort(teamPlayers, function(a, b) return a.Name < b.Name end)
+
+				for _, p in ipairs(teamPlayers) do
+					local row = Instance.new("Frame")
+					row.Size = UDim2.new(1, -5, 0, 16)
+					row.BackgroundTransparency = 1
+					row.LayoutOrder = order
+					order += 1
+					row.Parent = listScroller
+
+					local colorDot = Instance.new("Frame")
+					colorDot.Size = UDim2.new(0, 8, 0, 8)
+					colorDot.Position = UDim2.new(0, 0, 0.5, -4)
+					colorDot.BackgroundColor3 = p.Team and p.TeamColor.Color or Color3.fromRGB(150, 150, 150)
+					colorDot.BorderSizePixel = 0
+					colorDot.Parent = row
+					local dotCorner = Instance.new("UICorner")
+					dotCorner.CornerRadius = UDim.new(0, 2)
+					dotCorner.Parent = colorDot
+
+					local nameLabel = makeLabel(row, p.Name, 10, FONT_BODY, TEXT_MAIN)
+					nameLabel.Size = UDim2.new(1, -65, 1, 0)
+					nameLabel.Position = UDim2.new(0, 14, 0, 0)
+					nameLabel.TextXAlignment = Enum.TextXAlignment.Left
+					nameLabel.TextTruncate = Enum.TextTruncate.AtEnd
+
+					local dist = 0
+					if rootPart and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+						dist = math.floor((rootPart.Position - p.Character.HumanoidRootPart.Position).Magnitude)
+					end
+					local distLabel = makeLabel(row, string.format("%.0fm", dist), 9, FONT_CODE, TEXT_DIM)
+					distLabel.Size = UDim2.new(0, 60, 1, 0)
+					distLabel.Position = UDim2.new(1, -5, 0, 0)
+					distLabel.TextXAlignment = Enum.TextXAlignment.Right
+				end
+			end
+			prevSub.Text = string.format("ONLINE: %d", #players)
+		end
+
+		task.spawn(function()
+			while task.wait(0.5) do
+				listObj:Update()
+			end
+		end)
+
+		return listObj
 	end
 
 	return self
